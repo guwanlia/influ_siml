@@ -81,7 +81,7 @@ vector<int> g_follower[N];
 
 map<int, int> g_userMap;
 map<int, int> g_activeCircle;
-map<int, int> g_noactiveCircle;
+map<int, long long> g_noactiveCircle;
 
 void LoadUserMap()
 {
@@ -219,7 +219,7 @@ void CalOneTweet(const map<int, DateTime>& retweetMap)
 
     map<int, vector<int> > retweetRelation, noRetweetRelation;
 
-    int activeNum, userId1, userId2, followerSize;
+    int userId1, userId2;
 
     itor1 = retweetMap.begin();
     endItor = retweetMap.end();
@@ -228,8 +228,7 @@ void CalOneTweet(const map<int, DateTime>& retweetMap)
 	userId1 = itor1->first;
 	const DateTime& retweetDateTime = itor1->second;
 	const vector<int>& followerVector = g_follower[userId1];
-	followerSize = followerVector.size();
-	for (int i = 0; i < followerSize; ++i)
+	for (int i = 0; i < followerVector.size(); ++i)
 	{
 	    userId2 = followerVector[i];
 	    itor2 = retweetMap.find(userId2);
@@ -250,6 +249,7 @@ void CalOneTweet(const map<int, DateTime>& retweetMap)
     }
 
     map<int, vector<int> >::const_iterator itor = retweetRelation.begin();
+    int activeNum;
     while (itor != retweetRelation.end())
     {
 	activeNum = (itor->second).size();
@@ -257,7 +257,6 @@ void CalOneTweet(const map<int, DateTime>& retweetMap)
 
 	itor++;
     }
-
     itor = noRetweetRelation.begin();
     while (itor != noRetweetRelation.end())
     {
@@ -312,12 +311,12 @@ void OutputResult()
 
     FILE* out = fopen("sample_test.txt", "w");
 
-    for (int i = 0; i < 30; ++i)
+    for (int i = 1; i < 31; ++i)
     {
 	int activeNum = g_activeCircle[i];
-	int noActiveNum = g_noactiveCircle[i];
+	long long noActiveNum = g_noactiveCircle[i];
 	double prob = activeNum / double(activeNum+noActiveNum);
-	fprintf(out, "%d\t%d\t%d\t%f\n", i, activeNum, noActiveNum, prob); 
+	fprintf(out, "%d\t%d\t%lld\t%f\n", i, activeNum, noActiveNum, prob); 
     }
 
     fclose(out);
