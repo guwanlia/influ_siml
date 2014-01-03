@@ -80,8 +80,12 @@ vector<int> g_follower[N];
 // vector<int> g_followee[N];
 
 map<int, int> g_userMap;
-map<int, int> g_activeCircle;
-map<int, long long> g_noactiveCircle;
+map<int, int> g_activeCircle[6];
+map<int, long long> g_noactiveCircle[6];
+
+const int timeStamp[6] = {1, 5, 10, 24, 48, 72};
+
+const int monthBegin[] = {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335};
 
 void LoadUserMap()
 {
@@ -213,24 +217,61 @@ void LoadProfile()
     printf("load profile done!\n");
 }
 
-void CalOneTweet(const map<int, DateTime>& retweetMap)
+int DateSpan(const DateTime& rootTime, const DateTime& retweetTime)
+{
+    return monthBegin[retweetTime.month] + retweetTime.day
+	- monthBegin[rootTime.month] - rootTime.day;
+}
+
+int HourSpan(const DateTime& rootTime, const DateTime& retweetTime)
+{
+    if (retweetTime.minute < rootTime.minute ||
+	(retweetTime.minute == rootTime.minute &&
+	 retweetTime.second < rootTime.second))
+    {
+	return retweetTime.hour - rootTime.hour - 1;
+    }
+    else
+    {
+	return retweetTime.hour - rootTime.hour;
+    }
+}
+
+int CalTimeInterv(const DateTime& rootTime, const DateTime& retweetTime)
+{
+    int dateDiff = DateSpan(rootTime, retweetTime);
+    int hourDiff = HourSpan(rootTime, retweetTime);
+    int timeDiff = dateDiff * 24 + hourDiff;
+
+    for (int i = 0; i < 6; ++i)
+    {
+	if (timeDiff < timeStamp[i])
+	{
+	    return i;
+	}
+    }
+    return 5; //****//
+}
+
+void CalOneTweet(const map<int, DateTime>& retweetMap, const DateTime& rootTime)
 {
     map<int, DateTime>::const_iterator itor1, itor2, endItor;
 
     map<int, vector<int> > retweetRelation, noRetweetRelation;
-
-    int userId1, userId2;
+    map<int, vector<DateTime> > retweetRelationTime, noRetweetRelationTime;
 
     itor1 = retweetMap.begin();
     endItor = retweetMap.end();
+    
+    // this loop formulate the retweeet relationship.
     while (itor1 != endItor)
     {
-	userId1 = itor1->first;
+	int userId1 = itor1->first;
 	const DateTime& retweetDateTime = itor1->second;
 	const vector<int>& followerVector = g_follower[userId1];
-	for (int i = 0; i < followerVector.size(); ++i)
+	for (unsigned int i = 0; i < followerVector.size(); ++i)
 	{
-	    userId2 = followerVector[i];
+	    int userId2 = followerVector[i];
 	    itor2 = retweetMap.find(userId2);
 
 	    if (itor2 != endItor)
@@ -238,30 +279,67 @@ void CalOneTweet(const map<int, DateTime>& retweetMap)
 		if (retweetDateTime < itor2->second)
 		{
 		    retweetRelation[userId2].push_back(userId1);
+		    retweetRelationTime[userId2].push_back(retweetDateTime);
 		}
 	    }
 	    else
 	    {
 		noRetweetRelation[userId2].push_back(userId1);
+		noRetweetRelationTime[userId2].push_back(retweetDateTime);
 	    }
 	}
 	itor1++;
     }
 
     map<int, vector<int> >::const_iterator itor = retweetRelation.begin();
-    int activeNum;
     while (itor != retweetRelation.end())
     {
-	activeNum = (itor->second).size();
-	g_activeCircle[activeNum]++;
+	int userId = itor->first;
+	const vector<DateTime>& activeTime = retweetRelationTime[userId];
+	int timeInterv = CalTimeInterv(rootTime, retweetMap.find(userId)->second);
+
+	int activeNum = (itor->second).size();
+	g_activeCircle[timeInterv][activeNum]++;
+	
+	for (int i = 0; i < timeInterv; ++i)
+	{
+	    activeNum = 0;
+	    for (unsigned int j = 0; j < activeTime.size(); ++j)
+	    {
+		int interv = CalTimeInterv(rootTime, activeTime[j]);
+
+		if (interv <= i) //*****//
+		{
+		    activeNum++;
+		}
+	    }
+	    g_noactiveCircle[i][activeNum]++;
+	}
 
 	itor++;
     }
     itor = noRetweetRelation.begin();
     while (itor != noRetweetRelation.end())
     {
-	activeNum = (itor->second).size();
-	g_noactiveCircle[activeNum]++;
+	int userId = itor->first;
+	const vector<DateTime>& activeTime = noRetweetRelationTime[userId];
+	int activeNum = (itor->second).size();
+	g_noactiveCircle[5][activeNum]++;
+
+	for (int i = 0; i < 5; ++i)
+	{
+	    activeNum = 0;
+	    for (unsigned int j = 0; j < activeTime.size(); ++j)
+	    {
+		int interv = CalTimeInterv(rootTime, activeTime[j]);
+
+		if (interv <= i) //*****//
+		{
+		    activeNum++;
+		}
+	    }
+	    g_noactiveCircle[i][activeNum]++;
+	}
 
 	itor++;
     }
@@ -282,6 +360,8 @@ void CalProb()
 	getline(retweetFile, line);
 	if (tweetTime >= "2012-00-00-00:00:00")
 	{
+	    DateTime rootTime = ParseTime(tweetTime);
+	    
 	    istringstream iReLine(line);
 	    map<int, DateTime> retweetMap;
 
@@ -293,7 +373,7 @@ void CalProb()
 		}
 	    }
 	    //****//
-	    CalOneTweet(retweetMap);
+	    CalOneTweet(retweetMap, rootTime);
 	}
 	if (++n % 10000 == 0)
 	{
@@ -309,15 +389,21 @@ void OutputResult()
 {
     printf("output.\n");
 
-    FILE* out = fopen("sample_test.txt", "w");
+    FILE* out = fopen("sample_test_timespan.txt", "w");
 
-    for (int i = 1; i < 31; ++i)
+    for (int i = 0; i < 6; ++i)
     {
-	int activeNum = g_activeCircle[i];
-	long long noActiveNum = g_noactiveCircle[i];
-	double prob = activeNum / double(activeNum+noActiveNum);
-	fprintf(out, "%d\t%d\t%lld\t%f\n", i, activeNum, noActiveNum, prob); 
+	printf("******Time span %d*******\n", i);
+	for (int j = 1; j < 31; ++j)
+	{
+	    int activeNum = g_activeCircle[i][j];
+	    long long noActiveNum = g_noactiveCircle[i][j];
+	    double prob = activeNum / double(activeNum+noActiveNum);
+	    fprintf(out, "%d\t%d\t%lld\t%f\n", j, activeNum, noActiveNum, prob); 
+	}
+	
     }
+
 
     fclose(out);
     printf("output done!\n");
