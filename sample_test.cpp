@@ -80,8 +80,8 @@ vector<int> g_follower[N];
 // vector<int> g_followee[N];
 
 map<int, int> g_userMap;
-map<int, int> g_activeCircle[6];
-map<int, long long> g_noactiveCircle[6];
+map<int, int> g_activeCircle[7];
+map<int, long long> g_noactiveCircle[7];
 
 const int timeStamp[6] = {1, 5, 10, 24, 48, 72};
 
@@ -250,7 +250,7 @@ int CalTimeInterv(const DateTime& rootTime, const DateTime& retweetTime)
 	    return i;
 	}
     }
-    return 5; //****//
+    return 6; //****//
 }
 
 void CalOneTweet(const map<int, DateTime>& retweetMap, const DateTime& rootTime)
@@ -324,9 +324,9 @@ void CalOneTweet(const map<int, DateTime>& retweetMap, const DateTime& rootTime)
 	int userId = itor->first;
 	const vector<DateTime>& activeTime = noRetweetRelationTime[userId];
 	int activeNum = (itor->second).size();
-	g_noactiveCircle[5][activeNum]++;
+	g_noactiveCircle[6][activeNum]++;
 
-	for (int i = 0; i < 5; ++i)
+	for (int i = 0; i < 6; ++i)
 	{
 	    activeNum = 0;
 	    for (unsigned int j = 0; j < activeTime.size(); ++j)
@@ -389,11 +389,11 @@ void OutputResult()
 {
     printf("output.\n");
 
-    FILE* out = fopen("sample_test_timespan.txt", "w");
+    FILE* out = fopen("sample_test_timespan7.txt", "w");
 
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i < 7; ++i)
     {
-	printf("******Time span %d*******\n", i);
+	fprintf(out, "******Time span %d*******\n", i);
 	for (int j = 1; j < 31; ++j)
 	{
 	    int activeNum = g_activeCircle[i][j];
@@ -403,7 +403,6 @@ void OutputResult()
 	}
 	
     }
-
 
     fclose(out);
     printf("output done!\n");
